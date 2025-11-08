@@ -23,12 +23,15 @@ static Typewriter tw; // Typewriter instance
 #define DEBOUNCE_MS 50 // Debounce time in milliseconds
 bool next;
 bool prev;
-bool segfinished = false;  // false if not finished, true when line is finished
-bool pagefinished = false; // false if not finished, true when page is finished
-bool whenpressed = false;  // false if not finished, true when pressed after finished text
-int lines = 10;            // Number of lines per page
-int fasttext = 10;         // Fast text delay (ms)
-int slowtext = 40;         // Slow text delay (ms)
+bool segfinished = false;   // false if not finished, true when line is finished
+bool pagefinished = false;  // false if not finished, true when page is finished
+bool whenpressed = false;   // false if not finished, true when pressed after finished text
+int pagesize[2] = {26, 13}; // Page size: [characters per line, lines per page]
+
+int chars = pagesize[0]; // Number of characters per line
+int lines = pagesize[1]; // Number of lines per page
+int fasttext = 10;       // Fast text delay (ms)
+int slowtext = 40;       // Slow text delay (ms)
 
 char c; // Character being typed
 
@@ -83,7 +86,7 @@ void setup()
   Serial.printf("Text length: %d\n", text.length());
 
   Serial.println("Splitting text...");
-  segments = splitTextByWord(text, 26);
+  segments = splitTextByWord(text, chars);
 
   Serial.printf("Loaded %d segments\n", segments.size());
   if (segments.size() > 0)
@@ -122,20 +125,22 @@ void setup()
 
 void loop()
 {
+  int lineHeight = 16;                             // Adjust based on text size (size 2 = 16 pixels)
+  int yPosition = lineHeight * ((segIdx) % lines); // Y position of text
   // Detect Touch Screen
   if (ts.touched())
   {
     TS_Point p = ts.getPoint();
     // printTouchToSerial(p);
+    Serial.println(segIdx);
   }
   next = debounceButton(touchRight(ts), 2) == true;
   prev = debounceButton(touchLeft(ts), 3) == true;
   // next = debounceButton(digitalRead(NEXTPIN), 0) == LOW;
   //  prev = debounceButton(digitalRead(PREVPIN), 1) == LOW;
 
-  // Always call tick while segment is not finished
-  if (!segfinished && segIdx < segments.size())
-  { // Show 10 segments (lines) on a page
+  if (!pagefinished && segIdx < segments.size()) // If page not finished and segments remain
+  {
     tw.tick(segments[segIdx].c_str(), fasttext * next + slowtext * (1 - next));
     // If typewriter finished, set finished flag
     if (!tw.textrunning_)
@@ -147,37 +152,65 @@ void loop()
     if (prev)
     {
       tw.reset();
-      tft.setCursor(0, 0);
+      tft.setCursor(0, yPosition);
+      tft.fillRect(0, yPosition, tft.width(), lineHeight, TFT_BLACK);
       tftPrint(tft, segments[segIdx].c_str());
       segfinished = true;
     }
+
+    if (segfinished)
+    {
+      // If reached lines per page, set page finished
+      if ((segIdx + 1) % lines == 0 || segIdx == segments.size() - 1)
+      {
+        pagefinished = true;
+        segfinished = false;
+        segIdx++;
+      }
+      else
+      {
+        segIdx++;
+        int yPosition = lineHeight * ((segIdx) % lines); // Y position of text
+        tft.setCursor(0, yPosition);                     // move cursor down
+        Serial.println(yPosition);
+        segfinished = false;
+      }
+    }
   }
+
   // Handle button presses to change segments
-  else if (segfinished)
+  else if (pagefinished)
   {
     if (next == 0 && prev == 0)
     {
       whenpressed = 1; // Set flag for when button is pressed while segment is finished
     }
-    if (whenpressed == 1 && next && segIdx < segments.size() - 1) // If not last segment
+    if (whenpressed == 1 && next && segIdx < (segments.size() - 1)) // If not last segment
     {
-      segIdx++;
       whenpressed = 0;
       tw.reset();
       segfinished = false;
-      // Clear screen
-      tft.fillScreen(TFT_BLACK);
-      tft.setCursor(0, 0);
+      pagefinished = false;
+      Serial.println(yPosition);
+      if ((segIdx) % lines == 0)
+      {
+        tft.fillScreen(TFT_BLACK);
+        tft.setCursor(0, 0);
+      }
     }
-    else if (whenpressed == 1 && prev && segIdx > 0) // If not first segment
+    else if (whenpressed == 1 && prev) // If not first segment
     {
-      segIdx--;
       whenpressed = 0;
       tw.reset();
       segfinished = false;
-      // Clear screen
-      tft.fillScreen(TFT_BLACK);
-      tft.setCursor(0, 0);
+      // Clear line
+      if (segIdx > 0)
+      {
+        segIdx--;
+      }
+      int yPosition = lineHeight * ((segIdx) % lines); // Y position of text
+      tft.fillRect(0, yPosition, tft.width(), lineHeight, TFT_BLACK);
+      tft.setCursor(0, yPosition);
     }
   }
 }
