@@ -12,10 +12,25 @@
 #include <cstdlib>
 #include <SPI.h>
 
+// Variables
 static std::string text;
 static std::vector<std::string> segments;
 static size_t segIdx = 0;
-static Typewriter tw;
+static size_t pageIdx = 0;
+static Typewriter tw; // Typewriter instance
+#define NEXTPIN 22    // Pulldown button pins
+#define PREVPIN 21
+#define DEBOUNCE_MS 50 // Debounce time in milliseconds
+bool next;
+bool prev;
+bool segfinished = false;  // false if not finished, true when line is finished
+bool pagefinished = false; // false if not finished, true when page is finished
+bool whenpressed = false;  // false if not finished, true when pressed after finished text
+int lines = 10;            // Number of lines per page
+int fasttext = 10;         // Fast text delay (ms)
+int slowtext = 40;         // Slow text delay (ms)
+
+char c; // Character being typed
 
 // Touchscreen setup
 #define XPT2046_IRQ 36
@@ -29,21 +44,6 @@ SPIClass mySPI(VSPI);            // VSPI default pins, for touchscreen
 
 XPT2046_Touchscreen ts(XPT2046_CS, XPT2046_IRQ);
 TFT_eSPI tft = TFT_eSPI();
-
-// Pull down button pins
-#define NEXTPIN 22
-#define PREVPIN 21
-#define DEBOUNCE_MS 50
-bool next;
-bool prev;
-bool finished = false;
-bool whenpressed = false; // false if not finished, true when pressed after finished text
-
-int lines = 10;    // Number of lines per page
-int fasttext = 10; // Fast text delay (ms)
-int slowtext = 40; // Slow text delay (ms)
-
-char c; // Character being typed
 
 void setup()
 {
@@ -134,14 +134,14 @@ void loop()
   //  prev = debounceButton(digitalRead(PREVPIN), 1) == LOW;
 
   // Always call tick while segment is not finished
-  if (!finished && segIdx < segments.size())
+  if (!segfinished && segIdx < segments.size())
   { // Show 10 segments (lines) on a page
     tw.tick(segments[segIdx].c_str(), fasttext * next + slowtext * (1 - next));
     // If typewriter finished, set finished flag
     if (!tw.textrunning_)
     {
       tw.reset();
-      finished = true;
+      segfinished = true;
     }
 
     if (prev)
@@ -149,33 +149,35 @@ void loop()
       tw.reset();
       tft.setCursor(0, 0);
       tftPrint(tft, segments[segIdx].c_str());
-      finished = true;
+      segfinished = true;
     }
   }
   // Handle button presses to change segments
-  else if (finished)
+  else if (segfinished)
   {
     if (next == 0 && prev == 0)
     {
-      whenpressed = 1;
+      whenpressed = 1; // Set flag for when button is pressed while segment is finished
     }
-    if (whenpressed == 1 && next && segIdx < segments.size() - 1)
+    if (whenpressed == 1 && next && segIdx < segments.size() - 1) // If not last segment
     {
       segIdx++;
+      whenpressed = 0;
       tw.reset();
-      finished = false;
+      segfinished = false;
+      // Clear screen
       tft.fillScreen(TFT_BLACK);
       tft.setCursor(0, 0);
-      whenpressed = 0;
     }
-    else if (whenpressed == 1 && prev && segIdx > 0)
+    else if (whenpressed == 1 && prev && segIdx > 0) // If not first segment
     {
       segIdx--;
+      whenpressed = 0;
       tw.reset();
-      finished = false;
+      segfinished = false;
+      // Clear screen
       tft.fillScreen(TFT_BLACK);
       tft.setCursor(0, 0);
-      whenpressed = 0;
     }
   }
 }
