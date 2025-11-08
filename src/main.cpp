@@ -138,34 +138,18 @@ void loop()
   { // Show 10 segments (lines) on a page
     tw.tick(segments[segIdx].c_str(), fasttext * next + slowtext * (1 - next));
     // If typewriter finished, set finished flag
-    if (!tw.textrunning_ && segIdx < lines && segIdx < segments.size() - 1)
+    if (!tw.textrunning_)
     {
-      Serial.println();
-      tftPrintln();
-      segIdx++;
       tw.reset();
-    }
-    else
-    {
       finished = true;
     }
+
     if (prev)
     {
       tw.reset();
-      if (segIdx < lines && segIdx < segments.size() - 1)
-      {
-        Serial.println();
-        Serial.print(segments[segIdx].c_str());
-        tft.setCursor(segIdx, 0);
-        tftPrint(segments[segIdx].c_str());
-        segIdx++;
-      }
-      else
-      {
-        tft.fillScreen(TFT_BLACK);
-        tft.setCursor(0, 0);
-        finished = true;
-      }
+      tft.setCursor(0, 0);
+      tftPrint(tft, segments[segIdx].c_str());
+      finished = true;
     }
   }
   // Handle button presses to change segments
