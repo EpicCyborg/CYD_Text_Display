@@ -5,48 +5,53 @@ extern TFT_eSPI tft;
 
 // --- Implementations that take a TFT_eSPI& ---
 // These forward directly to the TFT_eSPI print/println methods.
-void tftPrint(TFT_eSPI &tft, const String &s) { tft.print(s); }
+// void tftPrint(TFT_eSPI &tft, const String &s) { tft.print(s); }
 void tftPrint(TFT_eSPI &tft, const char *s) { tft.print(s); }
 void tftPrint(TFT_eSPI &tft, char c) { tft.print(c); }
-void tftPrint(TFT_eSPI &tft, int v) { tft.print(v); }
-void tftPrint(TFT_eSPI &tft, unsigned int v) { tft.print(v); }
-void tftPrint(TFT_eSPI &tft, long v) { tft.print(v); }
-void tftPrint(TFT_eSPI &tft, unsigned long v) { tft.print(v); }
-void tftPrint(TFT_eSPI &tft, float v, int d) { tft.print(v, d); }
-void tftPrint(TFT_eSPI &tft, double v, int d) { tft.print(v, d); }
+// void tftPrint(TFT_eSPI &tft, int v) { tft.print(v); }
+// void tftPrint(TFT_eSPI &tft, unsigned int v) { tft.print(v); }
+// void tftPrint(TFT_eSPI &tft, long v) { tft.print(v); }
+// void tftPrint(TFT_eSPI &tft, unsigned long v) { tft.print(v); }
+// void tftPrint(TFT_eSPI &tft, float v, int d) { tft.print(v, d); }
+// void tftPrint(TFT_eSPI &tft, double v, int d) { tft.print(v, d); }
 
-void tftPrintln(TFT_eSPI &tft) { tft.println(); }
-void tftPrintln(TFT_eSPI &tft, const String &s) { tft.println(s); }
+// void tftPrintln(TFT_eSPI &tft) { tft.println(); }
+// void tftPrintln(TFT_eSPI &tft, const String &s) { tft.println(s); }
 void tftPrintln(TFT_eSPI &tft, const char *s) { tft.println(s); }
 void tftPrintln(TFT_eSPI &tft, char c) { tft.println(c); }
-void tftPrintln(TFT_eSPI &tft, int v) { tft.println(v); }
-void tftPrintln(TFT_eSPI &tft, unsigned int v) { tft.println(v); }
-void tftPrintln(TFT_eSPI &tft, long v) { tft.println(v); }
-void tftPrintln(TFT_eSPI &tft, unsigned long v) { tft.println(v); }
-void tftPrintln(TFT_eSPI &tft, float v, int d) { tft.println(v, d); }
-void tftPrintln(TFT_eSPI &tft, double v, int d) { tft.println(v, d); }
+// void tftPrintln(TFT_eSPI &tft, int v) { tft.println(v); }
+// void tftPrintln(TFT_eSPI &tft, unsigned int v) { tft.println(v); }
+// void tftPrintln(TFT_eSPI &tft, long v) { tft.println(v); }
+// void tftPrintln(TFT_eSPI &tft, unsigned long v) { tft.println(v); }
+// void tftPrintln(TFT_eSPI &tft, float v, int d) { tft.println(v, d); }
+// void tftPrintln(TFT_eSPI &tft, double v, int d) { tft.println(v, d); }
 
 // --- Forwarders that use the global 'tft' ---
-void tftPrint(const String &s) { tftPrint(tft, s); }
+// void tftPrint(const String &s) { tftPrint(tft, s); }
 void tftPrint(const char *s) { tftPrint(tft, s); }
 void tftPrint(char c) { tftPrint(tft, c); }
-void tftPrint(int v) { tftPrint(tft, v); }
-void tftPrint(unsigned int v) { tftPrint(tft, v); }
-void tftPrint(long v) { tftPrint(tft, v); }
-void tftPrint(unsigned long v) { tftPrint(tft, v); }
-void tftPrint(float v, int d) { tftPrint(tft, v, d); }
-void tftPrint(double v, int d) { tftPrint(tft, v, d); }
+// void tftPrint(int v) { tftPrint(tft, v); }
+// void tftPrint(unsigned int v) { tftPrint(tft, v); }
+// void tftPrint(long v) { tftPrint(tft, v); }
+// void tftPrint(unsigned long v) { tftPrint(tft, v); }
+// void tftPrint(float v, int d) { tftPrint(tft, v, d); }
+// void tftPrint(double v, int d) { tftPrint(tft, v, d); }
 
-void tftPrintln() { tftPrintln(tft); }
-void tftPrintln(const String &s) { tftPrintln(tft, s); }
+// void tftPrintln() { tftPrintln(tft); }
+// void tftPrintln(const String &s) { tftPrintln(tft, s); }
 void tftPrintln(const char *s) { tftPrintln(tft, s); }
 void tftPrintln(char c) { tftPrintln(tft, c); }
-void tftPrintln(int v) { tftPrintln(tft, v); }
-void tftPrintln(unsigned int v) { tftPrintln(tft, v); }
-void tftPrintln(long v) { tftPrintln(tft, v); }
-void tftPrintln(unsigned long v) { tftPrintln(tft, v); }
-void tftPrintln(float v, int d) { tftPrintln(tft, v, d); }
-void tftPrintln(double v, int d) { tftPrintln(tft, v, d); }
+// void tftPrintln(int v) { tftPrintln(tft, v); }
+// void tftPrintln(unsigned int v) { tftPrintln(tft, v); }
+// void tftPrintln(long v) { tftPrintln(tft, v); }
+// void tftPrintln(unsigned long v) { tftPrintln(tft, v); }
+// void tftPrintln(float v, int d) { tftPrintln(tft, v, d); }
+// void tftPrintln(double v, int d) { tftPrintln(tft, v, d); }
+
+bool delayMillis(unsigned long lastTime, unsigned long interval)
+{
+    return (millis() - lastTime) >= interval;
+}
 
 // --- Existing utilities ---
 bool debounceButton(bool reading, uint8_t id)
@@ -95,9 +100,4 @@ bool touchLeft(XPT2046_Touchscreen &ts, int threshold)
         return false;
     TS_Point p = ts.getPoint();
     return (p.y > threshold);
-}
-
-bool delayMillis(unsigned long lastTime, unsigned long interval)
-{
-    return (millis() - lastTime) >= interval;
 }

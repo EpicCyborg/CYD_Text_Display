@@ -83,7 +83,7 @@ std::string readFile(fs::FS &fs, const char *path)
   return content;
 }
 
-void writeFile(fs::FS &fs, const char *path, const char *message)
+bool writeFile(fs::FS &fs, const char *path, const char *message)
 {
   Serial.printf("Writing file: %s\n", path);
 
@@ -91,7 +91,7 @@ void writeFile(fs::FS &fs, const char *path, const char *message)
   if (!file)
   {
     Serial.println("Failed to open file for writing");
-    return;
+    return false;
   }
   if (file.print(message))
   {
@@ -102,6 +102,7 @@ void writeFile(fs::FS &fs, const char *path, const char *message)
     Serial.println("Write failed");
   }
   file.close();
+  return file.print(message);
 }
 
 void appendFile(fs::FS &fs, const char *path, const char *message)

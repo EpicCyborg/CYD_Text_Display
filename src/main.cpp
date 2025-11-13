@@ -5,6 +5,7 @@
 #include "SDCard.h"
 #include <TFT_eSPI.h>
 #include <XPT2046_Touchscreen.h>
+#include <Preferences.h>
 
 #include <iostream>
 #include <string>
@@ -12,16 +13,19 @@
 #include <cstdlib>
 #include <SPI.h>
 
+Preferences prefs;
+
 // Variables
 static std::string text;
 static std::vector<std::string> segments;
-static size_t segIdx = 0;
-static size_t pageIdx = 0;
+static size_t segIdx;
+static size_t pageIdx;
 static Typewriter tw; // Typewriter instance
+#define SD_CS 5       // SD card CS pin
 #define NEXTPIN 22    // Pulldown button pins
 #define PREVPIN 21
 #define DEBOUNCE_MS 50 // Debounce time in milliseconds
-
+String s;
 bool next;
 bool prev;
 bool segfinished = false;   // false if not finished, true when line is finished
@@ -29,15 +33,14 @@ bool pagefinished = false;  // false if not finished, true when page is finished
 bool whenpressed = false;   // false if not finished, true when pressed after finished text
 int pagesize[2] = {26, 14}; // Page size: [characters per line, lines per page]
 
-int chars = pagesize[0]; // Number of characters per line
-int lines = pagesize[1]; // Number of lines per page
-int fasttext = 10;       // Fast text delay (ms)
-int slowtext = 40;       // Slow text delay (ms)
-int lineHeight = 16;     // Adjust based on text size (size 2 = 16 pixels)
-
-int prevtiming = 0; // Previous timing for page render
-
-char c; // Character being typed
+int chars = pagesize[0];        // Number of characters per line
+int lines = pagesize[1];        // Number of lines per page
+int fasttext = 10;              // Fast text delay (ms)
+int slowtext = 40;              // Slow text delay (ms)
+int lineHeight = 16;            // Adjust based on text size (size 2 = 16 pixels)
+int yPosition = 0;              // Y position of text
+static size_t lastPageIdx = -1; // Last saved page index
+int prevtiming = 0;             // Previous timing for page render
 
 // Touchscreen setup
 #define XPT2046_IRQ 36
@@ -47,21 +50,20 @@ char c; // Character being typed
 #define XPT2046_CS 33
 #define TFT_BL 27                // Backlight Pin
 SPIClass sdSPI = SPIClass(VSPI); // VSPI default pins, for SD card
-SPIClass mySPI(VSPI);            // VSPI default pins, for touchscreen
+SPIClass mySPI(VSPI);            // HSPI default pins, for touchscreen
 
 XPT2046_Touchscreen ts(XPT2046_CS, XPT2046_IRQ);
 TFT_eSPI tft = TFT_eSPI();
 
 void renderPage(int index) // render one whole page at once, given starting index
 {
-
   tft.fillScreen(TFT_BLACK);
   for (int i = 0; i < lines; i++)
   {
     int segmentIndex = index + i;
     if (segmentIndex >= 0 && segmentIndex < segments.size())
     {
-      int yPosition = lineHeight * i;
+      yPosition = lineHeight * i;
       tft.setCursor(0, yPosition);
       tftPrint(tft, segments[segmentIndex].c_str());
     }
@@ -74,14 +76,14 @@ void setup()
   delay(500); // Wait for USB CDC
 
   // Initialize SD card
-
   int i = 0;
-  while (!SD.begin(SS, sdSPI, 4000000))
+  while (!SD.begin(SD_CS, sdSPI, 4000000))
   {
     Serial.println("Card Mount Failed");
     delay(10);
     i++;
   }
+
   Serial.printf("Card mount succeeded in %i tries", i);
   Serial.println();
   uint8_t cardType = SD.cardType();
@@ -97,29 +99,37 @@ void setup()
   pinMode(NEXTPIN, INPUT_PULLUP);
   pinMode(PREVPIN, INPUT_PULLUP);
 
-  // Retrieve text from SD card:
-  text = readFile(SD, "/text.txt");
-  Serial.println("Raw text from SD:");
-  Serial.println(text.c_str()); // Print the raw text
-  Serial.println("---END OF RAW TEXT---");
+  pinMode(SD_CS, OUTPUT);
+  digitalWrite(SD_CS, HIGH);
 
-  Serial.printf("Text length: %d\n", text.length());
+  text = readFile(SD, "/text.txt"); // Retrieve text from SD card
 
-  Serial.println("Splitting text...");
+  // Read saved page index from Preferences
+  prefs.begin("my-app", true);
+  pageIdx = prefs.getInt("pageIdx", 0);
+  prefs.end();
+  segIdx = pageIdx * lines;
+
+  // Serial.println("Raw text from SD:");
+  // Serial.println(text.c_str()); // Print the raw text
+  // Serial.println("---END OF RAW TEXT---");
+  // Serial.printf("Text length: %d\n", text.length());
+  // Serial.println("Splitting text...");
   segments = splitTextByWord(text, chars);
-
-  Serial.printf("Loaded %d segments\n", segments.size());
-  if (segments.size() > 0)
-  {
-    Serial.println("First segment:");
-    Serial.println(segments[0].c_str());
-  }
-  Serial.println("---END OF SEGMENTS---");
-  Serial.println("Setup complete! Starting typewriter effect...");
+  // Serial.printf("Loaded %d segments\n", segments.size());
+  // if (segments.size() > 0)
+  // {
+  //   Serial.println("First segment:");
+  //   Serial.println(segments[0].c_str());
+  // }
+  // Serial.println("---END OF SEGMENTS---");
+  // Serial.println("Setup complete! Starting typewriter effect...");
 
   // Start TFT
   pinMode(TFT_BL, OUTPUT);
   digitalWrite(TFT_BL, HIGH); // Turn backlight on
+  pinMode(XPT2046_CS, OUTPUT);
+  digitalWrite(XPT2046_CS, HIGH);
 
   // Start SPI for touchscreen
   mySPI.begin(XPT2046_CLK, XPT2046_MISO, XPT2046_MOSI, XPT2046_CS);
@@ -133,30 +143,28 @@ void setup()
   tft.writedata(0x48);
 
   tft.fillScreen(TFT_BLACK);
-
   // Set font and color
   tft.setTextColor(TFT_YELLOW, TFT_BLACK); // Yellow text, black background
-  tft.setTextDatum(MC_DATUM);              // Middle center
   tft.setTextSize(2);                      // Text size 2
-
-  tft.drawString("Touch Screen to Start", tft.width() / 2, 100);
   tft.setTextDatum(TL_DATUM);
 }
 
 void loop()
 {
-  int yPosition = lineHeight * ((segIdx) % lines); // Y position of text
-  // Detect Touch Screen
-  if (ts.touched())
+  pageIdx = segIdx / lines;
+  if (pageIdx != lastPageIdx)
   {
-    TS_Point p = ts.getPoint();
-    // printTouchToSerial(p);
-    Serial.println(segIdx);
+    prefs.begin("my-app", false);
+    prefs.putInt("pageIdx", pageIdx);
+    prefs.end();
+    lastPageIdx = pageIdx;
   }
+  yPosition = lineHeight * ((segIdx) % lines); // Y position of text
+
   next = debounceButton(touchRight(ts), 2) == true;
   prev = debounceButton(touchLeft(ts), 3) == true;
   // next = debounceButton(digitalRead(NEXTPIN), 0) == LOW;
-  //  prev = debounceButton(digitalRead(PREVPIN), 1) == LOW;
+  // prev = debounceButton(digitalRead(PREVPIN), 1) == LOW;
 
   if (!pagefinished && segIdx < segments.size()) // If page not finished and segments remain
   {
@@ -190,8 +198,8 @@ void loop()
       else
       {
         segIdx++;
-        int yPosition = lineHeight * ((segIdx) % lines); // Y position of text
-        tft.setCursor(0, yPosition);                     // move cursor down
+        yPosition = lineHeight * ((segIdx) % lines); // Y position of text
+        tft.setCursor(0, yPosition);                 // move cursor down
         Serial.println(yPosition);
         segfinished = false;
       }
@@ -229,7 +237,7 @@ void loop()
       {
         segIdx--;
       }
-      int yPosition = lineHeight * ((segIdx) % lines); // Y position of text
+      yPosition = lineHeight * ((segIdx) % lines); // Y position of text
       tft.fillRect(0, yPosition, tft.width(), lineHeight, TFT_BLACK);
       tft.setCursor(0, yPosition);
       // If reached lines per page, render whole previous page
