@@ -32,6 +32,7 @@ int chars = pagesize[0]; // Number of characters per line
 int lines = pagesize[1]; // Number of lines per page
 int fasttext = 10;       // Fast text delay (ms)
 int slowtext = 40;       // Slow text delay (ms)
+int lineHeight = 16;     // Adjust based on text size (size 2 = 16 pixels)
 
 char c; // Character being typed
 
@@ -47,6 +48,22 @@ SPIClass mySPI(VSPI);            // VSPI default pins, for touchscreen
 
 XPT2046_Touchscreen ts(XPT2046_CS, XPT2046_IRQ);
 TFT_eSPI tft = TFT_eSPI();
+
+void renderPage(int index) // render one whole page at once, given starting index
+{
+
+  tft.fillScreen(TFT_BLACK);
+  for (int i = 0; i < lines; i++)
+  {
+    int segmentIndex = index + i;
+    if (segmentIndex >= 0 && segmentIndex < segments.size())
+    {
+      int yPosition = lineHeight * i;
+      tft.setCursor(0, yPosition);
+      tftPrint(tft, segments[segmentIndex].c_str());
+    }
+  }
+}
 
 void setup()
 {
@@ -117,7 +134,7 @@ void setup()
   // Set font and color
   tft.setTextColor(TFT_YELLOW, TFT_BLACK); // Yellow text, black background
   tft.setTextDatum(MC_DATUM);              // Middle center
-  tft.setTextSize(2);
+  tft.setTextSize(2);                      // Text size 2
 
   tft.drawString("Touch Screen to Start", tft.width() / 2, 100);
   tft.setTextDatum(TL_DATUM);
@@ -125,7 +142,6 @@ void setup()
 
 void loop()
 {
-  int lineHeight = 16;                             // Adjust based on text size (size 2 = 16 pixels)
   int yPosition = lineHeight * ((segIdx) % lines); // Y position of text
   // Detect Touch Screen
   if (ts.touched())
@@ -198,19 +214,24 @@ void loop()
         tft.setCursor(0, 0);
       }
     }
-    else if (whenpressed == 1 && prev) // If not first segment
+    else if (whenpressed == 1 && prev)
     {
       whenpressed = 0;
       tw.reset();
       segfinished = false;
       // Clear line
-      if (segIdx > 0)
+      if (segIdx > 0) // if not first segment
       {
         segIdx--;
       }
       int yPosition = lineHeight * ((segIdx) % lines); // Y position of text
       tft.fillRect(0, yPosition, tft.width(), lineHeight, TFT_BLACK);
       tft.setCursor(0, yPosition);
+      // If reached lines per page, render whole previous page
+      if ((segIdx) % lines == 0)
+      {
+        renderPage(segIdx - lines); // Render previous page
+      }
     }
   }
 }

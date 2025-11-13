@@ -96,3 +96,5 @@ bool touchLeft(XPT2046_Touchscreen &ts, int threshold)
     TS_Point p = ts.getPoint();
     return (p.y > threshold);
 }
+
+
