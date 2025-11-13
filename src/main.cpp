@@ -27,13 +27,15 @@ bool prev;
 bool segfinished = false;   // false if not finished, true when line is finished
 bool pagefinished = false;  // false if not finished, true when page is finished
 bool whenpressed = false;   // false if not finished, true when pressed after finished text
-int pagesize[2] = {26, 13}; // Page size: [characters per line, lines per page]
+int pagesize[2] = {26, 14}; // Page size: [characters per line, lines per page]
 
 int chars = pagesize[0]; // Number of characters per line
 int lines = pagesize[1]; // Number of lines per page
 int fasttext = 10;       // Fast text delay (ms)
 int slowtext = 40;       // Slow text delay (ms)
 int lineHeight = 16;     // Adjust based on text size (size 2 = 16 pixels)
+
+int prevtiming = 0; // Previous timing for page render
 
 char c; // Character being typed
 
@@ -166,8 +168,9 @@ void loop()
       segfinished = true;
     }
 
-    if (prev)
+    if (prev && delayMillis(prevtiming, 10))
     {
+      prevtiming = millis();
       tw.reset();
       tft.setCursor(0, yPosition);
       tft.fillRect(0, yPosition, tft.width(), lineHeight, TFT_BLACK);
@@ -215,9 +218,10 @@ void loop()
         tft.setCursor(0, 0);
       }
     }
-    else if (whenpressed == 1 && prev)
+    else if (whenpressed == 1 && prev && delayMillis(prevtiming, 50))
     {
       // whenpressed = 0; Make it so holding scrolls back faster
+      prevtiming = millis();
       tw.reset();
       segfinished = false;
       // Clear line
