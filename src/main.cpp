@@ -21,6 +21,7 @@ static Typewriter tw; // Typewriter instance
 #define NEXTPIN 22    // Pulldown button pins
 #define PREVPIN 21
 #define DEBOUNCE_MS 50 // Debounce time in milliseconds
+
 bool next;
 bool prev;
 bool segfinished = false;   // false if not finished, true when line is finished
@@ -216,7 +217,7 @@ void loop()
     }
     else if (whenpressed == 1 && prev)
     {
-      whenpressed = 0;
+      // whenpressed = 0; Make it so holding scrolls back faster
       tw.reset();
       segfinished = false;
       // Clear line

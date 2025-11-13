@@ -12,11 +12,6 @@ void Typewriter::reset()
     i_ = 0;
 }
 
-bool Typewriter::delayMillis_(unsigned long lastTime, unsigned long interval)
-{
-    return (millis() - lastTime) >= interval;
-}
-
 void Typewriter::tick(const char *text, int delay_ms)
 {
     if (!textrunning_)
@@ -36,7 +31,7 @@ void Typewriter::tick(const char *text, int delay_ms)
     }
 
     // Wait for base delay + any pending extra delay
-    if (!delayMillis_(texttime_, delay_ms + pendingDelay_))
+    if (!delayMillis(texttime_, delay_ms + pendingDelay_))
         return;
 
     // Print now

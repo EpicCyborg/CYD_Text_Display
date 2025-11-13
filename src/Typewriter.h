@@ -13,6 +13,4 @@ private:
     unsigned long texttime_;
     unsigned long pendingDelay_; // <- added to match typewriter.cpp
     int i_;
-
-    bool delayMillis_(unsigned long lastTime, unsigned long interval);
 };

@@ -97,4 +97,7 @@ bool touchLeft(XPT2046_Touchscreen &ts, int threshold)
     return (p.y > threshold);
 }
 
-
+bool delayMillis(unsigned long lastTime, unsigned long interval)
+{
+    return (millis() - lastTime) >= interval;
+}

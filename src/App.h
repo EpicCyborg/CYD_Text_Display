@@ -17,6 +17,8 @@ void printTouchToSerial(const TS_Point &p, Stream &out = Serial);
 bool touchRight(XPT2046_Touchscreen &ts, int threshold = 1900);
 bool touchLeft(XPT2046_Touchscreen &ts, int threshold = 1900);
 
+bool delayMillis(unsigned long lastTime, unsigned long interval);
+
 // TFT print helpers that behave like Serial.print / Serial.println
 void tftPrint(TFT_eSPI &tft, const String &s);
 void tftPrint(TFT_eSPI &tft, const char *s);
