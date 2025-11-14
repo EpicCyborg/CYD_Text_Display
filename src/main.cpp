@@ -31,7 +31,7 @@ bool prev;
 bool segfinished = false;   // false if not finished, true when line is finished
 bool pagefinished = false;  // false if not finished, true when page is finished
 bool whenpressed = false;   // false if not finished, true when pressed after finished text
-int pagesize[2] = {26, 14}; // Page size: [characters per line, lines per page]
+int pagesize[2] = {45, 14}; // Page size: [characters per line, lines per page]
 
 int chars = pagesize[0];        // Number of characters per line
 int lines = pagesize[1];        // Number of lines per page
@@ -99,10 +99,10 @@ void setup()
   pinMode(NEXTPIN, INPUT_PULLUP);
   pinMode(PREVPIN, INPUT_PULLUP);
 
-  pinMode(SD_CS, OUTPUT);
-  digitalWrite(SD_CS, HIGH);
+  // pinMode(SD_CS, OUTPUT);
+  // digitalWrite(SD_CS, HIGH);
 
-  text = readFile(SD, "/text.txt"); // Retrieve text from SD card
+  segments = readFile(SD, "/text.txt", chars, 0, lines * 50); // Retrieve text from SD card, text split into segments, from segment index 0, for window size
 
   // Read saved page index from Preferences
   prefs.begin("my-app", true);
@@ -115,7 +115,7 @@ void setup()
   // Serial.println("---END OF RAW TEXT---");
   // Serial.printf("Text length: %d\n", text.length());
   // Serial.println("Splitting text...");
-  segments = splitTextByWord(text, chars);
+  // segments = splitTextByWord(text, chars);
   // Serial.printf("Loaded %d segments\n", segments.size());
   // if (segments.size() > 0)
   // {
@@ -128,8 +128,8 @@ void setup()
   // Start TFT
   pinMode(TFT_BL, OUTPUT);
   digitalWrite(TFT_BL, HIGH); // Turn backlight on
-  pinMode(XPT2046_CS, OUTPUT);
-  digitalWrite(XPT2046_CS, HIGH);
+  // pinMode(XPT2046_CS, OUTPUT);
+  // digitalWrite(XPT2046_CS, HIGH); // deselect touchscreen
 
   // Start SPI for touchscreen
   mySPI.begin(XPT2046_CLK, XPT2046_MISO, XPT2046_MOSI, XPT2046_CS);
@@ -143,9 +143,12 @@ void setup()
   tft.writedata(0x48);
 
   tft.fillScreen(TFT_BLACK);
+
   // Set font and color
   tft.setTextColor(TFT_YELLOW, TFT_BLACK); // Yellow text, black background
-  tft.setTextSize(2);                      // Text size 2
+  tft.setTextFont(2);                      // Set different built-in font
+  // tft.setFreeFont(&FreeMono9pt7b);
+  tft.setTextSize(1); // Text size 1
   tft.setTextDatum(TL_DATUM);
 }
 
@@ -158,13 +161,43 @@ void loop()
     prefs.putInt("pageIdx", pageIdx);
     prefs.end();
     lastPageIdx = pageIdx;
-  }
-  yPosition = lineHeight * ((segIdx) % lines); // Y position of text
 
+    // digitalWrite(TFT_BL, LOW); // Turn off TFT backlight
+    // SD_Reading = true;
+    // tft.writecommand(0x10);
+    // digitalWrite(XPT2046_CS, HIGH);
+    // digitalWrite(SD_CS, HIGH);
+    // digitalWrite(15, HIGH);
+    // digitalWrite(SD_CS, LOW);
+    // segments = readFile(SD, "/text.txt", chars, segIdx, lines);
+    // yPosition = lineHeight * ((segIdx) % lines); // Y position of text
+    // delay(2000);
+    // tft.writecommand(0x11);
+    // digitalWrite(XPT2046_CS, HIGH);
+    // digitalWrite(SD_CS, HIGH);
+    // digitalWrite(TFT_BL, HIGH); // Turn on TFT backlight
+    // digitalWrite(15, LOW);
+  }
+  // if (!SD_Reading)
+  // {
+  //   digitalWrite(XPT2046_CS, HIGH);
+  //   digitalWrite(SD_CS, HIGH);
+  //   digitalWrite(XPT2046_CS, LOW);
+  //   tft.writecommand(0x10);
+  //   // digitalWrite(TFT_BL, HIGH); // Turn on backlight
   next = debounceButton(touchRight(ts), 2) == true;
   prev = debounceButton(touchLeft(ts), 3) == true;
   // next = debounceButton(digitalRead(NEXTPIN), 0) == LOW;
-  // prev = debounceButton(digitalRead(PREVPIN), 1) == LOW;
+  //   // prev = debounceButton(digitalRead(PREVPIN), 1) == LOW;
+  // }
+  // else
+  // {
+  //   digitalWrite(XPT2046_CS, HIGH);
+  //   digitalWrite(SD_CS, HIGH);
+  //   digitalWrite(SD_CS, LOW);
+  //   tft.writecommand(0x11);
+  //   // digitalWrite(TFT_BL, LOW); // Turn off backlight
+  // }
 
   if (!pagefinished && segIdx < segments.size()) // If page not finished and segments remain
   {
@@ -226,7 +259,7 @@ void loop()
         tft.setCursor(0, 0);
       }
     }
-    else if (whenpressed == 1 && prev && delayMillis(prevtiming, 50))
+    else if (whenpressed == 1 && prev && delayMillis(prevtiming, 1)) // Scroll back delay when holding
     {
       // whenpressed = 0; Make it so holding scrolls back faster
       prevtiming = millis();

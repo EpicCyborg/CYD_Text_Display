@@ -1,5 +1,7 @@
 #include "SDCard.h"
 
+bool SD_Reading = false; // Flag to indicate if SD card is being read
+
 void listDir(fs::FS &fs, const char *dirname, uint8_t levels)
 {
   Serial.printf("Listing directory: %s\n", dirname);
@@ -65,22 +67,58 @@ void removeDir(fs::FS &fs, const char *path)
   }
 }
 
-std::string readFile(fs::FS &fs, const char *path)
+std::vector<std::string> readFile(fs::FS &fs, const char *path, size_t maxLen, size_t startIdx, size_t windowSize)
 {
   File file = fs.open(path);
   if (!file)
   {
     Serial.println("Failed to open file for reading");
-    return "";
+    return {};
   }
 
-  std::string content;
-  while (file.available())
+  std::vector<std::string> segments;
+  std::string buffer;
+
+  while (file.available() && segments.size() < (startIdx + windowSize))
   {
-    content += (char)file.read();
+    SD_Reading = true;
+    char c = file.read();
+    buffer += c;
+
+    // If buffer is full or newline, push as a segment (don't split at every space)
+    if (buffer.length() >= maxLen || c == '\n')
+    {
+      size_t splitPos = buffer.find_last_of(" ");
+      if (splitPos == std::string::npos || c == '\n')
+      {
+        // No space found or newline: split at end
+        segments.push_back(convertUTF8String(buffer));
+        buffer.clear();
+      }
+      else
+      {
+        // Split at last space
+        segments.push_back(convertUTF8String(buffer.substr(0, splitPos)));
+        // Remove segment and the space from buffer
+        buffer = buffer.substr(splitPos + 1);
+      }
+      // Trim trailing spaces/newlines
+      while (!buffer.empty() && isspace(buffer.back()))
+        buffer.pop_back();
+    }
   }
+  // Add any remaining buffer as a segment
+  if (!buffer.empty() && segments.size() < (startIdx + windowSize))
+    segments.push_back(buffer);
   file.close();
-  return content;
+
+  // Get only the window of segments
+  std::vector<std::string> window;
+  for (size_t i = startIdx; i < startIdx + windowSize && i < segments.size(); ++i)
+  {
+    window.push_back(segments[i]);
+  }
+  return window;
 }
 
 bool writeFile(fs::FS &fs, const char *path, const char *message)
