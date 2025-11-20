@@ -7,6 +7,7 @@
 #include <XPT2046_Touchscreen.h>
 #include <Preferences.h>
 
+#include <algorithm>
 #include <iostream>
 #include <string>
 #include <vector>
@@ -20,6 +21,10 @@ static std::string text;
 static std::vector<std::string> segments;
 static size_t segIdx;
 static size_t pageIdx;
+static size_t startpageIdx;
+static size_t ApageIdx; // Absolute page index
+static size_t AsegIdx;  // Absolute segment index
+
 static Typewriter tw; // Typewriter instance
 #define SD_CS 5       // SD card CS pin
 #define NEXTPIN 22    // Pulldown button pins
@@ -83,11 +88,9 @@ void setup()
     delay(10);
     i++;
   }
-
   Serial.printf("Card mount succeeded in %i tries", i);
   Serial.println();
   uint8_t cardType = SD.cardType();
-
   if (cardType == CARD_NONE)
   {
     Serial.println("No SD card attached");
@@ -101,19 +104,36 @@ void setup()
 
   // pinMode(SD_CS, OUTPUT);
   // digitalWrite(SD_CS, HIGH);
-
-  segments = readFile(SD, "/text.txt", chars, 0, lines * 50); // Retrieve text from SD card, text split into segments, from segment index 0, for window size
-
   // Read saved page index from Preferences
   prefs.begin("my-app", true);
-  pageIdx = prefs.getInt("pageIdx", 0);
+  ApageIdx = prefs.getInt("ApageIdx", 0);
   prefs.end();
-  segIdx = pageIdx * lines;
+  if (ApageIdx < 10)
+  {
+    startpageIdx = 0;
+  }
+  else
+  {
+    startpageIdx = ApageIdx - 10; // Load 10 pages before
+  }
+  Serial.printf("Loaded absolute page index %d\n", ApageIdx);
+  Serial.printf("Start page index at %d\n", startpageIdx);
 
-  // Serial.println("Raw text from SD:");
-  // Serial.println(text.c_str()); // Print the raw text
-  // Serial.println("---END OF RAW TEXT---");
-  // Serial.printf("Text length: %d\n", text.length());
+  pageIdx = ApageIdx - startpageIdx;
+  segIdx = pageIdx * lines;
+  Serial.printf("Relative page index at %d\n", pageIdx);
+  Serial.printf("Relative segment index at %d\n", segIdx);
+  segments = readFile(SD, "/text.txt", chars, startpageIdx * lines, lines * 20); // Retrieve text from SD card, text split into segments, from segment index 0, for window size
+  Serial.printf("Loaded %d segments (window)\n", segments.size());
+  if (segments.size() > 0)
+  {
+    Serial.print("First segment: ");
+    Serial.println(segments[0].c_str());
+    Serial.print("Last segment: ");
+    Serial.println(segments[segments.size() - 1].c_str());
+  }
+
+  // Serial.println(segments[-1].c_str());
   // Serial.println("Splitting text...");
   // segments = splitTextByWord(text, chars);
   // Serial.printf("Loaded %d segments\n", segments.size());
@@ -154,11 +174,14 @@ void setup()
 
 void loop()
 {
-  pageIdx = segIdx / lines;
-  if (pageIdx != lastPageIdx)
+  pageIdx = segIdx / lines;                                          // Current relative page index
+  if (pageIdx != lastPageIdx && pageIdx < (segments.size() / lines)) // If page index changed and within bounds
   {
-    prefs.begin("my-app", false);
-    prefs.putInt("pageIdx", pageIdx);
+    ApageIdx = startpageIdx + pageIdx;
+    Serial.printf("Absolute page index changed to %d\n", ApageIdx);
+    Serial.printf("Page index changed to %d\n", pageIdx);
+    prefs.begin("my-app", false); // Update saved page index in Preferences
+    prefs.putInt("ApageIdx", ApageIdx);
     prefs.end();
     lastPageIdx = pageIdx;
 
@@ -233,7 +256,7 @@ void loop()
         segIdx++;
         yPosition = lineHeight * ((segIdx) % lines); // Y position of text
         tft.setCursor(0, yPosition);                 // move cursor down
-        Serial.println(yPosition);
+        // Serial.println(yPosition);
         segfinished = false;
       }
     }
@@ -252,14 +275,14 @@ void loop()
       tw.reset();
       segfinished = false;
       pagefinished = false;
-      Serial.println(yPosition);
+      // Serial.println(yPosition);
       if ((segIdx) % lines == 0)
       {
         tft.fillScreen(TFT_BLACK);
         tft.setCursor(0, 0);
       }
     }
-    else if (whenpressed == 1 && prev && delayMillis(prevtiming, 1)) // Scroll back delay when holding
+    else if (whenpressed == 1 && prev && delayMillis(prevtiming, 50)) // Scroll back delay when holding
     {
       // whenpressed = 0; Make it so holding scrolls back faster
       prevtiming = millis();

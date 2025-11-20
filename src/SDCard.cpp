@@ -76,10 +76,11 @@ std::vector<std::string> readFile(fs::FS &fs, const char *path, size_t maxLen, s
     return {};
   }
 
-  std::vector<std::string> segments;
+  std::vector<std::string> window;
   std::string buffer;
+  size_t segmentCount = 0;
 
-  while (file.available() && segments.size() < (startIdx + windowSize))
+  while (file.available() && window.size() < windowSize)
   {
     SD_Reading = true;
     char c = file.read();
@@ -89,35 +90,35 @@ std::vector<std::string> readFile(fs::FS &fs, const char *path, size_t maxLen, s
     if (buffer.length() >= maxLen || c == '\n')
     {
       size_t splitPos = buffer.find_last_of(" ");
+      std::string segment;
       if (splitPos == std::string::npos || c == '\n')
       {
-        // No space found or newline: split at end
-        segments.push_back(convertUTF8String(buffer));
+        segment = convertUTF8String(buffer);
         buffer.clear();
       }
       else
       {
-        // Split at last space
-        segments.push_back(convertUTF8String(buffer.substr(0, splitPos)));
-        // Remove segment and the space from buffer
+        segment = convertUTF8String(buffer.substr(0, splitPos));
         buffer = buffer.substr(splitPos + 1);
       }
-      // Trim trailing spaces/newlines
       while (!buffer.empty() && isspace(buffer.back()))
         buffer.pop_back();
+
+      // Only keep segments in the window
+      if (segmentCount >= startIdx && window.size() < windowSize)
+        window.push_back(segment);
+
+      segmentCount++;
     }
   }
-  // Add any remaining buffer as a segment
-  if (!buffer.empty() && segments.size() < (startIdx + windowSize))
-    segments.push_back(buffer);
-  file.close();
-
-  // Get only the window of segments
-  std::vector<std::string> window;
-  for (size_t i = startIdx; i < startIdx + windowSize && i < segments.size(); ++i)
+  // Add any remaining buffer as a segment if in window
+  if (!buffer.empty() && window.size() < windowSize)
   {
-    window.push_back(segments[i]);
+    if (segmentCount >= startIdx)
+      window.push_back(convertUTF8String(buffer));
+    segmentCount++;
   }
+  file.close();
   return window;
 }
 
