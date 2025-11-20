@@ -22,8 +22,11 @@ static std::vector<std::string> segments;
 static size_t segIdx;
 static size_t pageIdx;
 static size_t startpageIdx;
-static size_t ApageIdx; // Absolute page index
-static size_t AsegIdx;  // Absolute segment index
+static size_t ApageIdx;       // Absolute page index
+static size_t AsegIdx;        // Absolute segment index
+static size_t prevPages = 10; // Number of previous pages loaded
+static size_t nextPages = 30; // Number of next pages loaded
+// Total number of pages (prevPages + nextPages) loaded must be below 45 (depend on pagesize)
 
 static Typewriter tw; // Typewriter instance
 #define SD_CS 5       // SD card CS pin
@@ -108,13 +111,13 @@ void setup()
   prefs.begin("my-app", true);
   ApageIdx = prefs.getInt("ApageIdx", 0);
   prefs.end();
-  if (ApageIdx < 10)
+  if (ApageIdx < prevPages)
   {
     startpageIdx = 0;
   }
   else
   {
-    startpageIdx = ApageIdx - 10; // Load 10 pages before
+    startpageIdx = ApageIdx - prevPages; // Load 10 pages before
   }
   Serial.printf("Loaded absolute page index %d\n", ApageIdx);
   Serial.printf("Start page index at %d\n", startpageIdx);
@@ -123,7 +126,7 @@ void setup()
   segIdx = pageIdx * lines;
   Serial.printf("Relative page index at %d\n", pageIdx);
   Serial.printf("Relative segment index at %d\n", segIdx);
-  segments = readFile(SD, "/text.txt", chars, startpageIdx * lines, lines * 20); // Retrieve text from SD card, text split into segments, from segment index 0, for window size
+  segments = readFile(SD, "/text.txt", chars, startpageIdx * lines, lines * (prevPages + nextPages)); // Retrieve text from SD card, text split into segments, from segment index 0, for window size
   Serial.printf("Loaded %d segments (window)\n", segments.size());
   if (segments.size() > 0)
   {
