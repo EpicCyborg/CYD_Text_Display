@@ -32,7 +32,9 @@ static Typewriter tw; // Typewriter instance
 #define SD_CS 5       // SD card CS pin
 #define NEXTPIN 22    // Pulldown button pins
 #define PREVPIN 21
-#define DEBOUNCE_MS 50 // Debounce time in milliseconds
+#define DEBOUNCE_MS 50       // Debounce time in milliseconds
+#define PHOTORESISTOR_PIN 34 // Pin for photoresistor
+int photoresistor_value = 0; // Variable to store photoresistor value
 String s;
 bool next;
 bool prev;
@@ -41,14 +43,15 @@ bool pagefinished = false;  // false if not finished, true when page is finished
 bool whenpressed = false;   // false if not finished, true when pressed after finished text
 int pagesize[2] = {45, 14}; // Page size: [characters per line, lines per page]
 
-int chars = pagesize[0];        // Number of characters per line
-int lines = pagesize[1];        // Number of lines per page
-int fasttext = 10;              // Fast text delay (ms)
-int slowtext = 40;              // Slow text delay (ms)
-int lineHeight = 16;            // Adjust based on text size (size 2 = 16 pixels)
-int yPosition = 0;              // Y position of text
-static size_t lastPageIdx = -1; // Last saved page index
-int prevtiming = 0;             // Previous timing for page render
+int chars = pagesize[0];             // Number of characters per line
+int lines = pagesize[1];             // Number of lines per page
+int fasttext = 10;                   // Fast text delay (ms)
+int slowtext = 40;                   // Slow text delay (ms)
+int lineHeight = 16;                 // Adjust based on text size (size 2 = 16 pixels)
+int yPosition = 0;                   // Y position of text
+static size_t lastPageIdx = -1;      // Last saved page index
+static unsigned long prevtiming = 0; // Previous timing for page render
+static unsigned long BL_update = 0;  // Last backlight update time
 
 // Touchscreen setup
 #define XPT2046_IRQ 36
@@ -150,10 +153,10 @@ void setup()
 
   // Start TFT
   pinMode(TFT_BL, OUTPUT);
-  digitalWrite(TFT_BL, HIGH); // Turn backlight on
+  analogWrite(TFT_BL, 128); // Turn backlight on, 0-255 intensity PWM
   // pinMode(XPT2046_CS, OUTPUT);
   // digitalWrite(XPT2046_CS, HIGH); // deselect touchscreen
-
+  pinMode(PHOTORESISTOR_PIN, INPUT); // Photoresistor pin
   // Start SPI for touchscreen
   mySPI.begin(XPT2046_CLK, XPT2046_MISO, XPT2046_MOSI, XPT2046_CS);
   ts.begin(mySPI);
@@ -177,6 +180,16 @@ void setup()
 
 void loop()
 {
+  if (delayMillis(BL_update, 200))
+  {
+    // Photoresistor Code
+    photoresistor_value = analogRead(PHOTORESISTOR_PIN);
+    int brightness = map(photoresistor_value, 0, 1600, 255, 1); // Map to brightness (inverted)
+    brightness = constrain(brightness, 1, 255);                 // Constrain brightness
+    Serial.println(brightness);
+    analogWrite(TFT_BL, brightness); // Adjust backlight brightness
+    BL_update = millis();
+  }
   pageIdx = segIdx / lines;                                          // Current relative page index
   if (pageIdx != lastPageIdx && pageIdx < (segments.size() / lines)) // If page index changed and within bounds
   {
@@ -237,7 +250,8 @@ void loop()
 
     if (prev && delayMillis(prevtiming, 10))
     {
-      prevtiming = millis();
+      if (millis())
+        prevtiming = millis();
       tw.reset();
       tft.setCursor(0, yPosition);
       tft.fillRect(0, yPosition, tft.width(), lineHeight, TFT_BLACK);
